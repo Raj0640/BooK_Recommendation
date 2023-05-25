@@ -1,0 +1,279 @@
+import numpy as np
+import pandas as pd
+books = pd.read_csv('/kaggle/input/book-recommendation-dataset/Books.csv')
+users = pd.read_csv('/kaggle/input/book-recommendation-dataset/Users.csv')
+ratings = pd.read_csv('/kaggle/input/book-recommendation-dataset/Ratings.csv')
+/opt/conda/lib/python3.7/site-packages/IPython/core/interactiveshell.py:3553: DtypeWarning: Columns (3) have mixed types.Specify dtype option on import or set low_memory=False.
+  exec(code_obj, self.user_global_ns, self.user_ns)
+books['Image-URL-M'][1]
+'http://images.amazon.com/images/P/0002005018.01.MZZZZZZZ.jpg'
+users.head()
+User-ID	Location	Age
+0	1	nyc, new york, usa	NaN
+1	2	stockton, california, usa	18.0
+2	3	moscow, yukon territory, russia	NaN
+3	4	porto, v.n.gaia, portugal	17.0
+4	5	farnborough, hants, united kingdom	NaN
+ratings.head()
+User-ID	ISBN	Book-Rating
+0	276725	034545104X	0
+1	276726	0155061224	5
+2	276727	0446520802	0
+3	276729	052165615X	3
+4	276729	0521795028	6
+print(books.shape)
+print(ratings.shape)
+print(users.shape)
+(271360, 8)
+(1149780, 3)
+(278858, 3)
+import matplotlib.pyplot as plt
+
+# Explore the distribution of book ratings
+plt.figure(figsize=(10, 6))
+plt.hist(ratings['Book-Rating'], bins=10, edgecolor='black')
+plt.xlabel('Rating')
+plt.ylabel('Count')
+plt.title('Distribution of Book Ratings')
+plt.show()
+
+# Explore the distribution of user ages
+plt.figure(figsize=(10, 6))
+plt.hist(users['Age'].dropna(), bins=30, edgecolor='black')
+plt.xlabel('Age')
+plt.ylabel('Count')
+plt.title('Distribution of User Ages')
+plt.show()
+
+# Explore the number of ratings per book
+ratings_per_book = ratings.groupby('ISBN').count()['Book-Rating'].reset_index()
+ratings_per_book.columns = ['ISBN', 'Num_Ratings']
+merged_data = pd.merge(ratings_per_book, books, on='ISBN')
+merged_data = merged_data.sort_values('Num_Ratings', ascending=False)
+
+plt.figure(figsize=(10, 6))
+plt.hist(merged_data['Num_Ratings'], bins=30, edgecolor='black')
+plt.xlabel('Number of Ratings')
+plt.ylabel('Count')
+plt.title('Distribution of Number of Ratings per Book')
+plt.show()
+
+# Explore the number of ratings per user
+ratings_per_user = ratings.groupby('User-ID').count()['Book-Rating'].reset_index()
+ratings_per_user.columns = ['User-ID', 'Num_Ratings']
+merged_data = pd.merge(ratings_per_user, users, on='User-ID')
+
+plt.figure(figsize=(10, 6))
+plt.hist(merged_data['Num_Ratings'], bins=30, edgecolor='black')
+plt.xlabel('Number of Ratings')
+plt.ylabel('Count')
+plt.title('Distribution of Number of Ratings per User')
+plt.show()
+
+# Explore the top-rated books
+top_rated_books = ratings.groupby('ISBN')['Book-Rating'].mean().sort_values(ascending=False).head(10)
+top_rated_books = pd.merge(top_rated_books, books, on='ISBN')
+
+plt.figure(figsize=(10, 6))
+plt.barh(top_rated_books['Book-Title'], top_rated_books['Book-Rating'], color='skyblue')
+plt.xlabel('Average Rating')
+plt.ylabel('Book Title')
+plt.title('Top-Rated Books')
+plt.show()
+
+
+
+
+
+books.isnull().sum()
+ISBN                   0
+Book-Title             0
+Book-Author            1
+Year-Of-Publication    0
+Publisher              2
+Image-URL-S            0
+Image-URL-M            0
+Image-URL-L            3
+dtype: int64
+users.isnull().sum()
+User-ID          0
+Location         0
+Age         110762
+dtype: int64
+ratings.isnull().sum()
+User-ID        0
+ISBN           0
+Book-Rating    0
+dtype: int64
+books.duplicated().sum()
+0
+ratings.duplicated().sum()
+0
+users.duplicated().sum()
+0
+Popularity Based Recommender System
+ratings_with_name = ratings.merge(books,on='ISBN')
+num_rating_df = ratings_with_name.groupby('Book-Title').count()['Book-Rating'].reset_index()
+num_rating_df.rename(columns={'Book-Rating':'num_ratings'},inplace=True)
+num_rating_df
+Book-Title	num_ratings
+0	A Light in the Storm: The Civil War Diary of ...	4
+1	Always Have Popsicles	1
+2	Apple Magic (The Collector's series)	1
+3	Ask Lily (Young Women of Faith: Lily Series, ...	1
+4	Beyond IBM: Leadership Marketing and Finance ...	1
+...	...	...
+241066	Ã?Â?lpiraten.	2
+241067	Ã?Â?rger mit Produkt X. Roman.	4
+241068	Ã?Â?sterlich leben.	1
+241069	Ã?Â?stlich der Berge.	3
+241070	Ã?Â?thique en toc	2
+241071 rows × 2 columns
+
+avg_rating_df = ratings_with_name.groupby('Book-Title').mean()['Book-Rating'].reset_index()
+avg_rating_df.rename(columns={'Book-Rating':'avg_rating'},inplace=True)
+avg_rating_df
+Book-Title	avg_rating
+0	A Light in the Storm: The Civil War Diary of ...	2.250000
+1	Always Have Popsicles	0.000000
+2	Apple Magic (The Collector's series)	0.000000
+3	Ask Lily (Young Women of Faith: Lily Series, ...	8.000000
+4	Beyond IBM: Leadership Marketing and Finance ...	0.000000
+...	...	...
+241066	Ã?Â?lpiraten.	0.000000
+241067	Ã?Â?rger mit Produkt X. Roman.	5.250000
+241068	Ã?Â?sterlich leben.	7.000000
+241069	Ã?Â?stlich der Berge.	2.666667
+241070	Ã?Â?thique en toc	4.000000
+241071 rows × 2 columns
+
+popular_df = num_rating_df.merge(avg_rating_df,on='Book-Title')
+popular_df
+Book-Title	num_ratings	avg_rating
+0	A Light in the Storm: The Civil War Diary of ...	4	2.250000
+1	Always Have Popsicles	1	0.000000
+2	Apple Magic (The Collector's series)	1	0.000000
+3	Ask Lily (Young Women of Faith: Lily Series, ...	1	8.000000
+4	Beyond IBM: Leadership Marketing and Finance ...	1	0.000000
+...	...	...	...
+241066	Ã?Â?lpiraten.	2	0.000000
+241067	Ã?Â?rger mit Produkt X. Roman.	4	5.250000
+241068	Ã?Â?sterlich leben.	1	7.000000
+241069	Ã?Â?stlich der Berge.	3	2.666667
+241070	Ã?Â?thique en toc	2	4.000000
+241071 rows × 3 columns
+
+popular_df = popular_df[popular_df['num_ratings']>=250].sort_values('avg_rating',ascending=False).head(50)
+popular_df = popular_df.merge(books,on='Book-Title').drop_duplicates('Book-Title')[['Book-Title','Book-Author','Image-URL-M','num_ratings','avg_rating']]
+popular_df['Image-URL-M'][0]
+'http://images.amazon.com/images/P/0439136350.01.MZZZZZZZ.jpg'
+Content Filtering Based Recommender System
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Load the dataset
+books = pd.read_csv('/kaggle/input/book-recommendation-dataset/Books.csv')
+
+# Preprocess the data
+books['Book-Title'] = books['Book-Title'].str.lower()
+books['Book-Author'] = books['Book-Author'].str.lower()
+books['Publisher'] = books['Publisher'].str.lower()
+books['Year-Of-Publication'] = books['Year-Of-Publication'].apply(str)
+
+# Create a TF-IDF vectorizer
+tfidf = TfidfVectorizer(
+    stop_words='english',
+    lowercase=True,
+    max_df=0.8,
+    max_features=1000
+)
+
+# Create a TF-IDF matrix
+tfidf_matrix = tfidf.fit_transform(books['Book-Title'] + ' ' + books['Book-Author'] + ' ' + books['Publisher'] + ' ' + books['Year-Of-Publication'])
+
+# Compute the cosine similarity matrix
+cosine_sim_matrix = cosine_similarity(tfidf_matrix, tfidf_matrix)
+
+# Function to get recommended books based on content
+def get_recommendations(title, cosine_sim_matrix, books_data, top_n=5):
+    # Get the index of the book that matches the title
+    indices = pd.Series(books_data.index, index=books_data['Book-Title']).drop_duplicates()
+    idx = indices[title.lower()]
+
+    # Get the pairwise similarity scores of the book with all other books
+    sim_scores = list(enumerate(cosine_sim_matrix[idx]))
+
+    # Sort the books based on the similarity scores
+    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+
+    # Get the top-n most similar books
+    top_books_indices = [i[0] for i in sim_scores[1:top_n+1]]
+    top_books = books_data.iloc[top_books_indices]
+
+    return top_books
+
+# Example usage
+book_title = "The Catcher in the Rye"
+recommended_books = get_recommendations(book_title, cosine_sim_matrix, books)
+print(recommended_books[['Book-Title', 'Book-Author', 'Publisher', 'Year-Of-Publication']])
+Collaborative Filtering Based Recommender System
+x = ratings_with_name.groupby('User-ID').count()['Book-Rating'] > 200
+padhe_likhe_users = x[x].index
+filtered_rating = ratings_with_name[ratings_with_name['User-ID'].isin(padhe_likhe_users)]
+y = filtered_rating.groupby('Book-Title').count()['Book-Rating']>=50
+famous_books = y[y].index
+final_ratings = filtered_rating[filtered_rating['Book-Title'].isin(famous_books)]
+pt = final_ratings.pivot_table(index='Book-Title',columns='User-ID',values='Book-Rating')
+pt.fillna(0,inplace=True)
+pt
+User-ID	254	2276	2766	2977	3363	4017	4385	6251	6323	6543	...	271705	273979	274004	274061	274301	274308	275970	277427	277639	278418
+Book-Title																					
+1984	9.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	...	10.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0
+1st to Die: A Novel	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	9.0	...	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0
+2nd Chance	0.0	10.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	...	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0
+4 Blondes	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	...	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0
+A Bend in the Road	0.0	0.0	7.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	...	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0
+...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...	...
+Year of Wonders	0.0	0.0	0.0	7.0	0.0	0.0	0.0	0.0	0.0	0.0	...	0.0	9.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0
+You Belong To Me	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	...	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0
+Zen and the Art of Motorcycle Maintenance: An Inquiry into Values	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	...	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0
+Zoya	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	...	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0
+\O\" Is for Outlaw"	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	0.0	...	0.0	0.0	0.0	0.0	8.0	0.0	0.0	0.0	0.0	0.0
+706 rows × 810 columns
+
+from sklearn.metrics.pairwise import cosine_similarity
+similarity_scores = cosine_similarity(pt)
+similarity_scores.shape
+(706, 706)
+def recommend(book_name):
+    # index fetch
+    index = np.where(pt.index==book_name)[0][0]
+    similar_items = sorted(list(enumerate(similarity_scores[index])),key=lambda x:x[1],reverse=True)[1:5]
+    
+    data = []
+    for i in similar_items:
+        item = []
+        temp_df = books[books['Book-Title'] == pt.index[i[0]]]
+        item.extend(list(temp_df.drop_duplicates('Book-Title')['Book-Title'].values))
+        item.extend(list(temp_df.drop_duplicates('Book-Title')['Book-Author'].values))
+        item.extend(list(temp_df.drop_duplicates('Book-Title')['Image-URL-M'].values))
+        
+        data.append(item)
+    
+    return data
+recommend('1984')
+[['Animal Farm',
+  'George Orwell',
+  'http://images.amazon.com/images/P/0451526341.01.MZZZZZZZ.jpg'],
+ ["The Handmaid's Tale",
+  'Margaret Atwood',
+  'http://images.amazon.com/images/P/0449212602.01.MZZZZZZZ.jpg'],
+ ['Brave New World',
+  'Aldous Huxley',
+  'http://images.amazon.com/images/P/0060809833.01.MZZZZZZZ.jpg'],
+ ['The Vampire Lestat (Vampire Chronicles, Book II)',
+  'ANNE RICE',
+  'http://images.amazon.com/images/P/0345313860.01.MZZZZZZZ.jpg']]
+pt.index[545]
+"The Handmaid's Tale"
